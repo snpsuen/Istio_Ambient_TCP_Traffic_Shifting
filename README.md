@@ -60,7 +60,8 @@ two Thu Dec  5 00:14:20 UTC 2024
    The TCP route is intended to shift all the tcp echo traffic to v1.
 ```
 kubectl -n istio-io-tcp-traffic-shifting apply -f samples/tcp-echo/gateway-api/tcp-echo-all-v1.yaml
-
+```
+```
 keyuser@ubunclone:~/istio-1.24.0$ kubectl -n istio-io-tcp-traffic-shifting get gtw
 NAME               CLASS   ADDRESS       PROGRAMMED   AGE
 tcp-echo-gateway   istio   172.18.0.11   True         20s
