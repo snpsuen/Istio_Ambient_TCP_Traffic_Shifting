@@ -70,19 +70,19 @@ NAME       AGE
 tcp-echo   24s
 keyuser@ubunclone:~/istio-1.24.0$
 keyuser@ubunclone:~/istio-1.24.0$ kubectl -n istio-io-tcp-traffic-shifting get svc
-NAME                     TYPE           CLUSTER-IP     EXTERNAL-IP   PORT(S)                           AGE
-curl                     ClusterIP      10.96.62.223   <none>        80/TCP                            9m38s
-tcp-echo                 ClusterIP      10.96.242.80   <none>        9000/TCP,9001/TCP                 9m3s
-tcp-echo-gateway-istio   LoadBalancer   10.96.109.45   172.18.0.11   15021:31078/TCP,31400:31258/TCP   42s
-tcp-echo-v1              ClusterIP      10.96.1.77     <none>        9000/TCP                          44s
-tcp-echo-v2              ClusterIP      10.96.36.30    <none>        9000/TCP                          42s
+NAME                     TYPE           CLUSTER-IP      EXTERNAL-IP   PORT(S)                           AGE
+curl                     ClusterIP      10.96.255.92    <none>        80/TCP                            76m
+tcp-echo                 ClusterIP      10.96.163.188   <none>        9000/TCP,9001/TCP                 76m
+tcp-echo-gateway-istio   LoadBalancer   10.96.59.54     172.18.0.11   15021:30471/TCP,31400:32241/TCP   67m
+tcp-echo-v1              ClusterIP      10.96.129.103   <none>        9000/TCP                          67m
+tcp-echo-v2              ClusterIP      10.96.74.70     <none>        9000/TCP                          67m
 keyuser@ubunclone:~/istio-1.24.0$
 keyuser@ubunclone:~/istio-1.24.0$ kubectl -n istio-io-tcp-traffic-shifting get pod -o wide
 NAME                                      READY   STATUS    RESTARTS   AGE     IP            NODE              NOMINATED NODE   READINESS GATES
-curl-6f9bc47956-bszrn                     1/1     Running   0          9m49s   10.244.2.8    ambient-worker    <none>           <none>
-tcp-echo-gateway-istio-57844964f7-rbfsh   1/1     Running   0          51s     10.244.1.5    ambient-worker2   <none>           <none>
-tcp-echo-v1-5f8dd78684-dsf6q              1/1     Running   0          9m14s   10.244.2.9    ambient-worker    <none>           <none>
-tcp-echo-v2-794b5ff9c7-lq7rd              1/1     Running   0          9m13s   10.244.2.10   ambient-worker    <none>           <none>
+curl-6f9bc47956-2l95k                     1/1     Running   0          76m   10.244.2.8    ambient-worker    <none>           <none>
+tcp-echo-gateway-istio-57844964f7-sl2j2   1/1     Running   0          67m   10.244.1.5    ambient-worker2   <none>           <none>
+tcp-echo-v1-5f8dd78684-bwvqk              1/1     Running   0          76m   10.244.2.9    ambient-worker    <none>           <none>
+tcp-echo-v2-794b5ff9c7-mwpbx              1/1     Running   0          76m   10.244.2.10   ambient-worker    <none>           <none>
 ```
 
 7. For the purpose of comparing with the east-west traffic test later, observe that tcp-echo-gateway adheres to the tcp-echo routing rule to distribure all the tcp-echo client requests to v1.
