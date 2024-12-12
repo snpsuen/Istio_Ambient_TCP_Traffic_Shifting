@@ -41,7 +41,7 @@ kubectl -n istio-io-tcp-traffic-shifting apply -f samples/curl/curl.yaml
 kubectl -n istio-io-tcp-traffic-shifting apply -f samples/tcp-echo/tcp-echo-services.yaml
 ```
 
-5. Observe that the client requests for the plain, TCP route-free K8s service, tcp-echo, are randomly distribured beteen v1 and v2.
+5. Observe that the client requests for the plain, TCP route-free K8s service, tcp-echo, are randomly distribured beteen the v1 and v2 pods.
 ```
 keyuser@ubunclone:~/istio-1.24.0$ kubectl -n istio-io-tcp-traffic-shifting exec deploy/curl -- sh -c "while true
 do
@@ -56,4 +56,31 @@ one Thu Dec  5 00:14:17 UTC 2024
 two Thu Dec  5 00:14:20 UTC 2024
 ```
 
+6. Deploy the K8s services tcp-echo-v1 & tcp-echo-v2, ingress (north/west) gateway tcp-echo-gateway and tcp route tcp-echo.
+   The TCP route is intended to shift all the tcp echo traffic to v1.
+```
+kubectl -n istio-io-tcp-traffic-shifting apply -f samples/tcp-echo/gateway-api/tcp-echo-all-v1.yaml
 
+keyuser@ubunclone:~/istio-1.24.0$ kubectl -n istio-io-tcp-traffic-shifting get gtw
+NAME               CLASS   ADDRESS       PROGRAMMED   AGE
+tcp-echo-gateway   istio   172.18.0.11   True         20s
+keyuser@ubunclone:~/istio-1.24.0$
+keyuser@ubunclone:~/istio-1.24.0$ kubectl -n istio-io-tcp-traffic-shifting get tcproute
+NAME       AGE
+tcp-echo   24s
+keyuser@ubunclone:~/istio-1.24.0$
+keyuser@ubunclone:~/istio-1.24.0$ kubectl -n istio-io-tcp-traffic-shifting get svc
+NAME                     TYPE           CLUSTER-IP     EXTERNAL-IP   PORT(S)                           AGE
+curl                     ClusterIP      10.96.62.223   <none>        80/TCP                            9m38s
+tcp-echo                 ClusterIP      10.96.242.80   <none>        9000/TCP,9001/TCP                 9m3s
+tcp-echo-gateway-istio   LoadBalancer   10.96.109.45   172.18.0.11   15021:31078/TCP,31400:31258/TCP   42s
+tcp-echo-v1              ClusterIP      10.96.1.77     <none>        9000/TCP                          44s
+tcp-echo-v2              ClusterIP      10.96.36.30    <none>        9000/TCP                          42s
+keyuser@ubunclone:~/istio-1.24.0$
+keyuser@ubunclone:~/istio-1.24.0$ kubectl -n istio-io-tcp-traffic-shifting get pod -o wide
+NAME                                      READY   STATUS    RESTARTS   AGE     IP            NODE              NOMINATED NODE   READINESS GATES
+curl-6f9bc47956-bszrn                     1/1     Running   0          9m49s   10.244.2.8    ambient-worker    <none>           <none>
+tcp-echo-gateway-istio-57844964f7-rbfsh   1/1     Running   0          51s     10.244.1.5    ambient-worker2   <none>           <none>
+tcp-echo-v1-5f8dd78684-dsf6q              1/1     Running   0          9m14s   10.244.2.9    ambient-worker    <none>           <none>
+tcp-echo-v2-794b5ff9c7-lq7rd              1/1     Running   0          9m13s   10.244.2.10   ambient-worker    <none>           <none>
+```
