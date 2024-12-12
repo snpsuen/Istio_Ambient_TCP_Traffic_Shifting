@@ -48,17 +48,15 @@ do
         date | nc tcp-echo 9000
         sleep 2
 done"
-two Thu Dec  5 00:14:09 UTC 2024
-one Thu Dec  5 00:14:11 UTC 2024
-one Thu Dec  5 00:14:13 UTC 2024
-two Thu Dec  5 00:14:15 UTC 2024
-one Thu Dec  5 00:14:17 UTC 2024
-two Thu Dec  5 00:14:20 UTC 2024
+two Wed Dec  4 00:14:09 UTC 2024
+one Wed Dec  4 00:14:11 UTC 2024
+one Wed Dec  4 00:14:13 UTC 2024
+two Wed Dec  4 00:14:15 UTC 2024
+one Wed Dec  4 00:14:17 UTC 2024
+two Wed Dec  4 00:14:20 UTC 2024
 ```
 
-6. Deploy the K8s services tcp-echo-v1 & tcp-echo-v2, ingress (north/west) gateway tcp-echo-gateway and tcp route tcp-echo.
-
-In particular, the tcp route is intended to shift all the tcp echo traffic to v1. Its frontend field, namely parentRefs, is set to tcp-echo-gateway.
+6. Deploy the K8s services tcp-echo-v1 & tcp-echo-v2, Istio ingress (north/west) gateway tcp-echo-gateway and tcp route tcp-echo. The tcp route is intended to shift all the tcp echo traffic to v1. Its frontend field, namely parentRefs, is set to tcp-echo-gateway.
 ```
 kubectl -n istio-io-tcp-traffic-shifting apply -f samples/tcp-echo/gateway-api/tcp-echo-all-v1.yaml
 ```
@@ -85,4 +83,54 @@ curl-6f9bc47956-bszrn                     1/1     Running   0          9m49s   1
 tcp-echo-gateway-istio-57844964f7-rbfsh   1/1     Running   0          51s     10.244.1.5    ambient-worker2   <none>           <none>
 tcp-echo-v1-5f8dd78684-dsf6q              1/1     Running   0          9m14s   10.244.2.9    ambient-worker    <none>           <none>
 tcp-echo-v2-794b5ff9c7-lq7rd              1/1     Running   0          9m13s   10.244.2.10   ambient-worker    <none>           <none>
+```
+
+7. For the purpose of comparing with the east-west traffic test later, observe that tcp-echo-gateway adheres to the tcp-echo routing rule to distribure all the tcp-echo client requests to v1.
+```
+keyuser@ubunclone:~$ kubectl -n istio-io-tcp-traffic-shifting exec deploy/curl -- sh -c "while true
+do
+        date | nc tcp-echo-gateway-istio 31400
+        sleep 2
+done"
+one Wed Dec  4 23:21:19 UTC 2024
+one Wed Dec  4 23:21:21 UTC 2024
+one Wed Dec  4 23:21:23 UTC 2024
+one Wed Dec  4 23:21:25 UTC 2024
+one Wed Dec  4 23:21:27 UTC 2024
+one Wed Dec  4 23:21:29 UTC 2024
+one Wed Dec  4 23:21:31 UTC 2024
+one Wed Dec  4 23:21:33 UTC 2024
+one Wed Dec  4 23:21:35 UTC 2024
+one Wed Dec  4 23:21:37 UTC 2024
+```
+
+8. Deploy a waypoint proxy in the namespace concerned. It will function as a transparent in-mesh gateway to manage the east-west traffic on both L4 and L7.
+```
+istioctl waypoint apply -n istio-io-tcp-traffic-shifting --enroll-namespace --overwrite --wait
+```
+```
+keyuser@ubunclone:~/istio-1.24.0$ kubectl -n istio-io-tcp-traffic-shifting get gtw                            NAME               CLASS            ADDRESS        PROGRAMMED   AGE
+tcp-echo-gateway   istio            172.18.0.11    True         67m
+waypoint           istio-waypoint   10.96.116.49   True         51m
+keyuser@ubunclone:~/istio-1.24.0$
+keyuser@ubunclone:~/istio-1.24.0$ kubectl -n istio-io-tcp-traffic-shifting get tcproute
+NAME          AGE
+tcp-echo      67m
+keyuser@ubunclone:~/istio-1.24.0$
+keyuser@ubunclone:~/istio-1.24.0$ kubectl -n istio-io-tcp-traffic-shifting get svc
+NAME                     TYPE           CLUSTER-IP      EXTERNAL-IP   PORT(S)                           AGE
+curl                     ClusterIP      10.96.255.92    <none>        80/TCP                            76m
+tcp-echo                 ClusterIP      10.96.163.188   <none>        9000/TCP,9001/TCP                 76m
+tcp-echo-gateway-istio   LoadBalancer   10.96.59.54     172.18.0.11   15021:30471/TCP,31400:32241/TCP   67m
+tcp-echo-v1              ClusterIP      10.96.129.103   <none>        9000/TCP                          67m
+tcp-echo-v2              ClusterIP      10.96.74.70     <none>        9000/TCP                          67m
+waypoint                 ClusterIP      10.96.116.49    <none>        15021/TCP,15008/TCP               51m
+keyuser@ubunclone:~/istio-1.24.0$
+keyuser@ubunclone:~/istio-1.24.0$ kubectl -n istio-io-tcp-traffic-shifting get pods -o wide
+NAME                                      READY   STATUS    RESTARTS   AGE   IP            NODE              NOMINATED NODE   READINESS GATES
+curl-6f9bc47956-2l95k                     1/1     Running   0          76m   10.244.2.8    ambient-worker    <none>           <none>
+tcp-echo-gateway-istio-57844964f7-sl2j2   1/1     Running   0          67m   10.244.1.5    ambient-worker2   <none>           <none>
+tcp-echo-v1-5f8dd78684-bwvqk              1/1     Running   0          76m   10.244.2.9    ambient-worker    <none>           <none>
+tcp-echo-v2-794b5ff9c7-mwpbx              1/1     Running   0          76m   10.244.2.10   ambient-worker    <none>           <none>
+waypoint-5d4bd47989-ww8hb                 1/1     Running   0          51m   10.244.2.11   ambient-worker    <none>           <none>
 ```
