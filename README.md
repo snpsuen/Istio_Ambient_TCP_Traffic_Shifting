@@ -85,11 +85,11 @@ tcp-echo-v1-5f8dd78684-bwvqk              1/1     Running   0          76m   10.
 tcp-echo-v2-794b5ff9c7-mwpbx              1/1     Running   0          76m   10.244.2.10   ambient-worker    <none>           <none>
 ```
 
-7. For the purpose of comparing with the east-west traffic test later, observe that tcp-echo-gateway adheres to the tcp-echo routing rule to distribure all the tcp-echo client requests to v1.
+7. For the purpose of comparing with the east-west traffic test later, observe that tcp-echo-gateway applies the tcp-echo routing rule to distributes all the tcp-echo client requests to v1.
 ```
 keyuser@ubunclone:~$ kubectl -n istio-io-tcp-traffic-shifting exec deploy/curl -- sh -c "while true
 do
-        date | nc tcp-echo-gateway-istio 31400
+        date | nc tcp-echo-gateway-istio 
         sleep 2
 done"
 one Wed Dec  4 23:21:19 UTC 2024
@@ -134,3 +134,35 @@ tcp-echo-v1-5f8dd78684-bwvqk              1/1     Running   0          76m   10.
 tcp-echo-v2-794b5ff9c7-mwpbx              1/1     Running   0          76m   10.244.2.10   ambient-worker    <none>           <none>
 waypoint-5d4bd47989-ww8hb                 1/1     Running   0          51m   10.244.2.11   ambient-worker    <none>           <none>
 ```
+
+9. Set up an east-west bound TCP route tcp-echo-ew that is designed to send 90% of ciient requests to v1 and 10% to v2. The frontend field parentRefs points to the existing K8s service tcp-echo.
+
+```
+kubectl -n istio-io-tcp-traffic-shifting apply -f - <<EOF
+apiVersion: gateway.networking.k8s.io/v1alpha2
+kind: TCPRoute
+metadata:
+  name: tcp-echo-ew
+spec:
+  parentRefs:
+  - group: ""
+    kind: Service
+    name: tcp-echo
+  rules:
+  - backendRefs:
+    - name: tcp-echo-v1
+      port: 9000
+      weight: 90
+    - name: tcp-echo-v2
+      port: 9000
+      weight: 10
+EOF
+```
+```
+keyuser@ubunclone:~/istio-1.24.0$ kubectl -n istio-io-tcp-traffic-shifting get tcproute
+NAME          AGE
+tcp-echo      11m
+tcp-echo-ew   5m22s
+```
+
+
