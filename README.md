@@ -57,6 +57,7 @@ two Thu Dec  5 00:14:20 UTC 2024
 ```
 
 6. Deploy the K8s services tcp-echo-v1 & tcp-echo-v2, ingress (north/west) gateway tcp-echo-gateway and tcp route tcp-echo.
+
 In particular, the tcp route is intended to shift all the tcp echo traffic to v1. Its frontend field, namely parentRefs, is set to tcp-echo-gateway.
 ```
 kubectl -n istio-io-tcp-traffic-shifting apply -f samples/tcp-echo/gateway-api/tcp-echo-all-v1.yaml
