@@ -14,8 +14,10 @@ In this example, we use the Kubernetes Gateway API to test out TCP traffic shift
 
 The use case refers to the task outlined in the Istio doc, [TCP Traffic Shifting](https://istio.io/latest/docs/tasks/traffic-management/tcp-traffic-shifting/). 
 
-1. First and foremost, ensure the Istio ambient mode is installed with the flag, --set values.pilot.env.PILOT_ENABLE_ALPHA_GATEWAY_API=true. Assume the Isto version is 1.24.0.
+1. Assume the Isto version is 1.24.0.. First and foremost, ensure the Istio ambient mode is installed with the flag, --set values.pilot.env.PILOT_ENABLE_ALPHA_GATEWAY_API=true.
 ```
+wget https://github.com/istio/istio/releases/download/1.24.0/istio-1.24.0-linux-amd64.tar.gz
+curl -L https://istio.io/downloadIstio | sh -
 cd istio-1.24.0
 export PATH=$PWD/bin:$PATH
 istioctl install --set values.pilot.env.PILOT_ENABLE_ALPHA_GATEWAY_API=true --set profile=ambient --skip-confirmation
@@ -26,4 +28,32 @@ istioctl install --set values.pilot.env.PILOT_ENABLE_ALPHA_GATEWAY_API=true --se
 kubectl create namespace istio-io-tcp-traffic-shifting
 kubectl label namespace istio-io-tcp-traffic-shifting istio.io/dataplane-mode=ambient
 ```
+
+3. Create and label the name space under test.
+```
+kubectl create namespace istio-io-tcp-traffic-shifting
+kubectl label namespace istio-io-tcp-traffic-shifting istio.io/dataplane-mode=ambient
+```
+
+4. Deploy the K8s workload and service objects for the TCP echo server and client from the bundled sample.
+```
+kubectl -n istio-io-tcp-traffic-shifting apply -f samples/curl/curl.yaml
+kubectl -n istio-io-tcp-traffic-shifting apply -f samples/tcp-echo/tcp-echo-services.yaml
+```
+
+5. Observe that the client requests for the plain, TCP route-free K8s service, tcp-echo, are randomly distribured beteen v1 and v2.
+```
+keyuser@ubunclone:~/istio-1.24.0$ kubectl -n istio-io-tcp-traffic-shifting exec deploy/curl -- sh -c "while true
+do
+        date | nc tcp-echo 9000
+        sleep 2
+done"
+two Thu Dec  5 00:14:09 UTC 2024
+one Thu Dec  5 00:14:11 UTC 2024
+one Thu Dec  5 00:14:13 UTC 2024
+two Thu Dec  5 00:14:15 UTC 2024
+one Thu Dec  5 00:14:17 UTC 2024
+two Thu Dec  5 00:14:20 UTC 2024
+```
+
 
