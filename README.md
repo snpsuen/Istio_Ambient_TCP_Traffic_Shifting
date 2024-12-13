@@ -234,3 +234,74 @@ spec:
               weight: 10
 EOF
 ```
+```
+keyuser@ubunclone:~/istio-1.24.0$ kubectl -n istio-io-tcp-traffic-shifting apply -f - <<EOF
+apiVersion: networking.istio.io/v1alpha3
+kind: EnvoyFilter
+metadata:
+  name: tcp-echo-filter
+  namespace: istio-io-tcp-traffic-shifting
+spec:
+  workloadSelector:
+    labels:
+      gateway.networking.k8s.io/gateway-name: waypoint
+  configPatches:
+  - applyTo: NETWORK_FILTER
+    match:
+      context: SIDECAR_INBOUND
+      listener:
+        name: "main_internal"
+        filterChain:
+          name: "inbound-vip|9000|tcp|tcp-echo.istio-io-tcp-traffic-shifting.svc.cluster.local"
+          filter:
+            name: "envoy.filters.network.tcp_proxy"
+    patch:
+      operation: REPLACE
+      value:
+        name: "envoy.filters.network.tcp_proxy"
+        typed_config:
+          "@type": "type.googleapis.com/envoy.extensions.filters.network.tcp_proxy.v3.TcpProxy"
+          statPrefix: "inbound-vip|9000|tcp|tcp-echo.istio-io-tcp-traffic-shifting.svc.cluster.local"
+          weightedClusters:
+            clusters:
+            - name: "inbound-vip|9000|tcp|tcp-echo-v1.istio-io-tcp-traffic-shifting.svc.cluster.local"
+              weight: 90
+            - name: "inbound-vip|9000|tcp|tcp-echo-v2.istio-io-tcp-traffic-shifting.svc.cluster.local"
+              weight: 10
+EOF
+EnvoyFilter exposes internal implementation details that may change at any time. Prefer other APIs if possible, and exercise extreme caution, especially around upgrades.
+envoyfilter.networking.istio.io/tcp-echo-filter configured
+keyuser@ubunclone:~/istio-1.24.0$ kubectl -n istio-io-tcp-traffic-shifting get envoyfilter
+NAME              AGE
+tcp-echo-filter   19s
+```
+
+Now we can shift 90% of the tcp-echo traffic to v1 and 10% to v2 simply by accessing the tcp-echo service itself.
+```
+keyuser@ubunclone:~/istio-1.24.0$ kubectl -n istio-io-tcp-traffic-shifting exec deploy/curl -- sh -c "while true
+do
+        date | nc tcp-echo 9000
+        sleep 2
+done"
+one Mon Dec  9 20:18:19 UTC 2024
+one Mon Dec  9 20:18:21 UTC 2024
+one Mon Dec  9 20:18:23 UTC 2024
+one Mon Dec  9 20:18:25 UTC 2024
+one Mon Dec  9 20:18:27 UTC 2024
+one Mon Dec  9 20:18:29 UTC 2024
+one Mon Dec  9 20:18:31 UTC 2024
+one Mon Dec  9 20:18:33 UTC 2024
+one Mon Dec  9 20:18:35 UTC 2024
+one Mon Dec  9 20:18:37 UTC 2024
+two Mon Dec  9 20:18:39 UTC 2024
+one Mon Dec  9 20:18:41 UTC 2024
+one Mon Dec  9 20:18:43 UTC 2024
+one Mon Dec  9 20:18:45 UTC 2024
+two Mon Dec  9 20:18:47 UTC 2024
+one Mon Dec  9 20:18:49 UTC 2024
+one Mon Dec  9 20:18:51 UTC 2024
+one Mon Dec  9 20:18:53 UTC 2024
+one Mon Dec  9 20:18:55 UTC 2024
+^C
+```
+
