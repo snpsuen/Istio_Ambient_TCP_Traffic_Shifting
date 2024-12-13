@@ -165,4 +165,72 @@ tcp-echo      11m
 tcp-echo-ew   5m22s
 ```
 
+10. Finally come to the scene of the bug by trying to connect to tcp-echo as the frontend of tcp-echo-ew. Note that the tcp-echo traffic is still distributed randomly between v1 and v2.
+```
+keyuser@ubunclone:~/istio-1.24.0$ kubectl -n istio-io-tcp-traffic-shifting exec deploy/curl -- sh -c "while true
+do
+        date | nc tcp-echo 9000
+        sleep 2
+done"
+two Sat Dec  7 01:47:37 UTC 2024
+one Sat Dec  7 01:47:39 UTC 2024
+two Sat Dec  7 01:47:41 UTC 2024
+one Sat Dec  7 01:47:43 UTC 2024
+two Sat Dec  7 01:47:45 UTC 2024
+one Sat Dec  7 01:47:47 UTC 2024
+one Sat Dec  7 01:47:49 UTC 2024
+one Sat Dec  7 01:47:51 UTC 2024
+one Sat Dec  7 01:47:53 UTC 2024
+one Sat Dec  7 01:47:55 UTC 2024
+two Sat Dec  7 01:47:57 UTC 2024
+two Sat Dec  7 01:47:59 UTC 2024
+one Sat Dec  7 01:48:01 UTC 2024
+^C
+```
 
+### Workaround hack
+
+There is a handy but dirty hack to force the waypoint proxy to implement the logic of the given TCP route, tcp-echo-ew. This is done by using the Istio EnvoyFilter API to patch the relevant listener filter of the waypoint proxy.
+
+Define an EnvoyFilter object called tcp-echo-filter, which is applied to these waypoint components.
+* listener: main_internal
+* filter chain: inbound-vip|9000|tcp|tcp-echo.istio-io-tcp-traffic-shifting.svc.cluster.local
+* filter: envoy.filters.network.tcp_proxy
+
+The target of the filter is specified as a weighted cluster between tcp-echo-v1 (90%) and tcp-echo-v1.
+```
+kubectl -n istio-io-tcp-traffic-shifting apply -f - <<EOF
+apiVersion: networking.istio.io/v1alpha3
+kind: EnvoyFilter
+metadata:
+  name: tcp-echo-filter
+  namespace: istio-io-tcp-traffic-shifting
+spec:
+  workloadSelector:
+    labels:
+      gateway.networking.k8s.io/gateway-name: waypoint
+  configPatches:
+  - applyTo: NETWORK_FILTER
+    match:
+      context: SIDECAR_INBOUND # will match inbound listeners in all sidecars
+      listener:
+        name: "main_internal"
+        filterChain:
+          name: "inbound-vip|9000|tcp|tcp-echo.istio-io-tcp-traffic-shifting.svc.cluster.local"
+          filter:
+            name: "envoy.filters.network.tcp_proxy"
+    patch:
+      operation: REPLACE
+      value:
+        name: "envoy.filters.network.tcp_proxy"
+        typed_config:
+          "@type": "type.googleapis.com/envoy.extensions.filters.network.tcp_proxy.v3.TcpProxy"
+          statPrefix: "inbound-vip|9000|tcp|tcp-echo.istio-io-tcp-traffic-shifting.svc.cluster.local"
+          weightedClusters:
+            clusters:
+            - name: "inbound-vip|9000|tcp|tcp-echo-v1.istio-io-tcp-traffic-shifting.svc.cluster.local"
+              weight: 90
+            - name: "inbound-vip|9000|tcp|tcp-echo-v2.istio-io-tcp-traffic-shifting.svc.cluster.local"
+              weight: 10
+EOF
+```
