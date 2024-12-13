@@ -1,0 +1,33 @@
+apiVersion: networking.istio.io/v1alpha3
+kind: EnvoyFilter
+metadata:
+  name: tcp-echo-ew-filter
+  namespace: istio-io-tcp-traffic-shifting # as defined in meshConfig resource.
+spec:
+  workloadSelector:
+    labels:
+      gateway.networking.k8s.io/gateway-name: waypoint
+  configPatches:
+  - applyTo: NETWORK_FILTER
+    match:
+      context: SIDECAR_INBOUND # will match inbound listeners in all sidecars
+      listener:
+        name: "main_internal"
+        filterChain:
+          name: "inbound-vip|9000|tcp|tcp-echo.istio-io-tcp-traffic-shifting.svc.cluster.local"
+          filter:
+            name: "envoy.filters.network.tcp_proxy"
+    patch:
+      operation: REPLACE
+      value:
+        name: "envoy.filters.network.tcp_proxy"
+        typed_config:
+          "@type": "type.googleapis.com/envoy.extensions.filters.network.tcp_proxy.v3.TcpProxy"
+          statPrefix: "inbound-vip|9000|tcp|tcp-echo.istio-io-tcp-traffic-shifting.svc.cluster.local"
+          weightedClusters:
+            clusters:
+            - name: "inbound-vip|9000|tcp|tcp-echo-v1.istio-io-tcp-traffic-shifting.svc.cluster.local"
+              weight: 100
+            - name: "inbound-vip|9000|tcp|tcp-echo-v2.istio-io-tcp-traffic-shifting.svc.cluster.local"
+              weight: 0
+            
