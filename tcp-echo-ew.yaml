@@ -1,0 +1,17 @@
+apiVersion: gateway.networking.k8s.io/v1alpha2
+kind: TCPRoute
+metadata:
+  name: tcp-echo-ew
+spec:
+  parentRefs:
+  - group: ""
+    kind: Service
+    name: tcp-echo
+  rules:
+  - backendRefs:
+    - name: tcp-echo-v1
+      port: 9000
+      weight: 90
+    - name: tcp-echo-v2
+      port: 9000
+      weight: 10
