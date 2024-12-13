@@ -197,7 +197,7 @@ Define an EnvoyFilter object called tcp-echo-filter, which is applied to these w
 * filter chain: inbound-vip|9000|tcp|tcp-echo.istio-io-tcp-traffic-shifting.svc.cluster.local
 * filter: envoy.filters.network.tcp_proxy
 
-The target of the filter is specified as a weighted cluster between tcp-echo-v1 (90%) and tcp-echo-v1.
+The target of the filter is specified as a weighted cluster between tcp-echo-v1 (90%) and tcp-echo-v2 (10%).
 ```
 kubectl -n istio-io-tcp-traffic-shifting apply -f - <<EOF
 apiVersion: networking.istio.io/v1alpha3
