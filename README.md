@@ -8,7 +8,7 @@ Let's walk through an example of reproducing the bug in an attempt to shift the 
 
 ### Limitation
 
-In this example, we use the Kubernetes Gateway API to test out TCP traffic shifting in an Istio ambient mesh. It can be shown elsewhere that the same bug will also happen to the Istio APIs of VirtualService, Gateway and the likes. The crux of the problem is that the L4 traffic management logic simply fails to register with the waypoint, whether configued via the Kubernetes Gateway API or Istio APIs.
+In this example, we use the Kubernetes Gateway API to test out TCP traffic shifting in an Istio ambient mesh. It can be shown elsewhere that the same bug will also happen to the Istio APIs of VirtualService, Gateway and the likes. The crux of the problem is that the L4 traffic management logic simply fails to register with waypoint, whether configued via the Kubernetes Gateway API or Istio APIs.
 
 ### Bug reproduction
 
