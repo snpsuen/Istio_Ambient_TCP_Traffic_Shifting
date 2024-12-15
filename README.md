@@ -14,7 +14,7 @@ In this example, we use the Kubernetes Gateway API to test out TCP traffic shift
 
 The use case refers to the task outlined in the Istio doc, [TCP Traffic Shifting](https://istio.io/latest/docs/tasks/traffic-management/tcp-traffic-shifting/). 
 
-1. Assume the Isto version is 1.24.0.. First and foremost, ensure the Istio ambient mode is installed with the flag, --set values.pilot.env.PILOT_ENABLE_ALPHA_GATEWAY_API=true.
+1. Assume the Isto version is 1.24.0. First and foremost, ensure the Istio ambient mode is installed with the flag, --set values.pilot.env.PILOT_ENABLE_ALPHA_GATEWAY_API=true.
 ```
 wget https://github.com/istio/istio/releases/download/1.24.0/istio-1.24.0-linux-amd64.tar.gz
 curl -L https://istio.io/downloadIstio | sh -
