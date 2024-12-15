@@ -212,7 +212,7 @@ spec:
   configPatches:
   - applyTo: NETWORK_FILTER
     match:
-      context: SIDECAR_INBOUND # will match inbound listeners in all sidecars
+      context: SIDECAR_INBOUND
       listener:
         name: "main_internal"
         filterChain:
