@@ -29,19 +29,13 @@ kubectl create namespace istio-io-tcp-traffic-shifting
 kubectl label namespace istio-io-tcp-traffic-shifting istio.io/dataplane-mode=ambient
 ```
 
-3. Create and label the name space under test.
-```
-kubectl create namespace istio-io-tcp-traffic-shifting
-kubectl label namespace istio-io-tcp-traffic-shifting istio.io/dataplane-mode=ambient
-```
-
-4. Deploy the K8s workload and service objects for the TCP echo server and client from the bundled sample.
+3. Deploy the K8s workload and service objects for the TCP echo server and client from the bundled sample.
 ```
 kubectl -n istio-io-tcp-traffic-shifting apply -f samples/curl/curl.yaml
 kubectl -n istio-io-tcp-traffic-shifting apply -f samples/tcp-echo/tcp-echo-services.yaml
 ```
 
-5. Observe that the client requests for the plain, TCP route-free K8s service, tcp-echo, are randomly distribured beteen the v1 and v2 pods.
+4. Observe that the client requests for the plain, TCP route-free K8s service, tcp-echo, are randomly distribured beteen the v1 and v2 pods.
 ```
 keyuser@ubunclone:~/istio-1.24.0$ kubectl -n istio-io-tcp-traffic-shifting exec deploy/curl -- sh -c "while true
 do
@@ -56,7 +50,7 @@ one Wed Dec  4 00:14:17 UTC 2024
 two Wed Dec  4 00:14:20 UTC 2024
 ```
 
-6. Deploy the K8s services tcp-echo-v1 & tcp-echo-v2, Istio ingress (north/west) gateway tcp-echo-gateway and tcp route tcp-echo. The tcp route is intended to shift all the tcp echo traffic to v1. Its frontend field, namely parentRefs, is set to tcp-echo-gateway.
+5. Deploy the K8s services tcp-echo-v1 & tcp-echo-v2, Istio ingress (north/west) gateway tcp-echo-gateway and tcp route tcp-echo. The tcp route is intended to shift all the tcp echo traffic to v1. Its frontend field, namely parentRefs, is set to tcp-echo-gateway.
 ```
 kubectl -n istio-io-tcp-traffic-shifting apply -f samples/tcp-echo/gateway-api/tcp-echo-all-v1.yaml
 ```
@@ -85,11 +79,11 @@ tcp-echo-v1-5f8dd78684-bwvqk              1/1     Running   0          76m   10.
 tcp-echo-v2-794b5ff9c7-mwpbx              1/1     Running   0          76m   10.244.2.10   ambient-worker    <none>           <none>
 ```
 
-7. For the purpose of comparing with the east-west traffic test later, observe that tcp-echo-gateway applies the tcp-echo routing rule to distributes all the tcp-echo client requests to v1.
+6. For the purpose of comparing with the east-west traffic test later, observe that tcp-echo-gateway applies the tcp-echo routing rule to distributes all the tcp-echo client requests to v1.
 ```
 keyuser@ubunclone:~$ kubectl -n istio-io-tcp-traffic-shifting exec deploy/curl -- sh -c "while true
 do
-        date | nc tcp-echo-gateway-istio 
+        date | nc tcp-echo-gateway-istio 31400 
         sleep 2
 done"
 one Wed Dec  4 23:21:19 UTC 2024
@@ -104,7 +98,7 @@ one Wed Dec  4 23:21:35 UTC 2024
 one Wed Dec  4 23:21:37 UTC 2024
 ```
 
-8. Deploy a waypoint proxy in the namespace concerned. It will function as a transparent in-mesh gateway to manage the east-west traffic on both L4 and L7.
+7. Deploy a waypoint proxy in the namespace concerned. It will function as a transparent in-mesh gateway to manage the east-west traffic on both L4 and L7.
 ```
 istioctl waypoint apply -n istio-io-tcp-traffic-shifting --enroll-namespace --overwrite --wait
 ```
@@ -135,7 +129,7 @@ tcp-echo-v2-794b5ff9c7-mwpbx              1/1     Running   0          76m   10.
 waypoint-5d4bd47989-ww8hb                 1/1     Running   0          51m   10.244.2.11   ambient-worker    <none>           <none>
 ```
 
-9. Set up an east-west bound TCP route tcp-echo-ew that is designed to send 90% of ciient requests to v1 and 10% to v2. The frontend field parentRefs points to the existing K8s service tcp-echo.
+8. Set up an east-west bound TCP route tcp-echo-ew that is designed to send 90% of ciient requests to v1 and 10% to v2. The frontend field parentRefs points to the existing K8s service tcp-echo.
 
 ```
 kubectl -n istio-io-tcp-traffic-shifting apply -f - <<EOF
@@ -165,7 +159,7 @@ tcp-echo      11m
 tcp-echo-ew   5m22s
 ```
 
-10. Finally come to the scene of the bug by trying to connect to tcp-echo as the frontend of tcp-echo-ew. Note that the tcp-echo traffic is still distributed randomly between v1 and v2.
+9. Finally come to the scene of the bug by trying to connect to tcp-echo as the frontend of tcp-echo-ew. Note that the tcp-echo traffic is still distributed randomly between v1 and v2.
 ```
 keyuser@ubunclone:~/istio-1.24.0$ kubectl -n istio-io-tcp-traffic-shifting exec deploy/curl -- sh -c "while true
 do
